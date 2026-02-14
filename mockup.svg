@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 820" width="420" height="820">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0d15"/>
+      <stop offset="100%" stop-color="#080810"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e8c547"/>
+      <stop offset="100%" stop-color="#c4952a"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="ringGlow1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d4a537" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#d4a537" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ringGlow2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00bcd4" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#00bcd4" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="420" height="820" rx="24" fill="url(#bgGrad)"/>
+
+  <!-- Outer border glow -->
+  <rect x="1" y="1" width="418" height="818" rx="24" fill="none" stroke="#d4a537" stroke-opacity="0.15" stroke-width="1"/>
+
+  <!-- === HEADER === -->
+  <!-- Power button -->
+  <circle cx="45" cy="42" r="18" fill="#1a1a2a" stroke="#d4a537" stroke-width="1.5"/>
+  <text x="45" y="47" text-anchor="middle" font-size="16" fill="#d4a537" font-family="Arial">⏻</text>
+  <circle cx="45" cy="24" r="3" fill="#4ade80" opacity="0.9"/>
+
+  <!-- Title -->
+  <text x="210" y="34" text-anchor="middle" font-size="22" font-weight="600" fill="#e8e8e8" font-family="Poppins, Arial, sans-serif">Shruti Box</text>
+  <text x="210" y="54" text-anchor="middle" font-size="11" fill="#888" font-family="Arial" letter-spacing="3">ELECTRONIC TANPURA</text>
+
+  <!-- Mute button -->
+  <circle cx="375" cy="42" r="18" fill="#1a1a2a" stroke="#555" stroke-width="1"/>
+  <text x="375" y="47" text-anchor="middle" font-size="14" fill="#888" font-family="Arial">🔊</text>
+
+  <!-- Divider -->
+  <line x1="30" y1="72" x2="390" y2="72" stroke="#222" stroke-width="1"/>
+
+  <!-- === VISUALIZATION SECTION === -->
+  <rect x="30" y="85" width="360" height="260" rx="20" fill="#0e0e18" stroke="#1a1a2a" stroke-width="1"/>
+
+  <!-- Glow backgrounds -->
+  <circle cx="210" cy="215" r="100" fill="url(#ringGlow1)"/>
+  <circle cx="210" cy="215" r="65" fill="url(#ringGlow2)"/>
+
+  <!-- Outer ring (Sa) - gold -->
+  <circle cx="210" cy="215" r="95" fill="none" stroke="#d4a537" stroke-width="2.5" stroke-opacity="0.8" filter="url(#glow)"/>
+  <circle cx="210" cy="215" r="95" fill="none" stroke="#d4a537" stroke-width="0.5" stroke-opacity="0.3" stroke-dasharray="4 6"/>
+
+  <!-- Middle ring (Pa) - cyan -->
+  <circle cx="210" cy="215" r="65" fill="none" stroke="#00bcd4" stroke-width="2" stroke-opacity="0.7" filter="url(#glow)"/>
+
+  <!-- Inner ring (Sa upper) - white -->
+  <circle cx="210" cy="215" r="35" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.5"/>
+
+  <!-- Center dot -->
+  <circle cx="210" cy="215" r="4" fill="#d4a537" opacity="0.9"/>
+
+  <!-- Ring labels -->
+  <text x="210" y="130" text-anchor="middle" font-size="9" fill="#d4a537" font-family="Arial" opacity="0.6">Sa</text>
+  <text x="300" y="218" text-anchor="middle" font-size="9" fill="#00bcd4" font-family="Arial" opacity="0.6">Pa</text>
+  <text x="210" y="192" text-anchor="middle" font-size="9" fill="#fff" font-family="Arial" opacity="0.4">Sā</text>
+
+  <!-- Animated dots on outer ring -->
+  <circle cx="305" cy="215" r="3" fill="#d4a537" opacity="0.8"/>
+  <circle cx="210" cy="120" r="3" fill="#d4a537" opacity="0.6"/>
+  <circle cx="115" cy="215" r="3" fill="#d4a537" opacity="0.4"/>
+  <circle cx="210" cy="310" r="3" fill="#d4a537" opacity="0.7"/>
+
+  <!-- === PITCH SECTION === -->
+  <rect x="30" y="360" width="360" height="110" rx="16" fill="#12121e" stroke="#1a1a2a" stroke-width="1"/>
+
+  <!-- Pitch down arrow -->
+  <circle cx="65" cy="400" r="22" fill="#1a1a2a" stroke="#333" stroke-width="1"/>
+  <text x="65" y="406" text-anchor="middle" font-size="18" fill="#d4a537" font-family="Arial">◀</text>
+
+  <!-- Note display -->
+  <text x="210" y="397" text-anchor="middle" font-size="48" font-weight="700" fill="#e8e8e8" font-family="Poppins, Arial, sans-serif">C</text>
+  <text x="210" y="422" text-anchor="middle" font-size="14" fill="#d4a537" font-family="monospace">261.63 Hz</text>
+
+  <!-- Pitch up arrow -->
+  <circle cx="355" cy="400" r="22" fill="#1a1a2a" stroke="#333" stroke-width="1"/>
+  <text x="355" y="406" text-anchor="middle" font-size="18" fill="#d4a537" font-family="Arial">▶</text>
+
+  <!-- Fine tuning row -->
+  <circle cx="130" cy="450" r="14" fill="#1a1a2a" stroke="#333" stroke-width="1"/>
+  <text x="130" y="455" text-anchor="middle" font-size="12" fill="#888" font-family="Arial">−</text>
+
+  <text x="210" y="455" text-anchor="middle" font-size="12" fill="#666" font-family="monospace">Fine: +0 cents</text>
+
+  <circle cx="290" cy="450" r="14" fill="#1a1a2a" stroke="#333" stroke-width="1"/>
+  <text x="290" y="455" text-anchor="middle" font-size="12" fill="#888" font-family="Arial">+</text>
+
+  <!-- === MODE SELECTOR === -->
+  <text x="30" y="500" font-size="10" fill="#666" font-family="Arial" letter-spacing="2">MODE</text>
+
+  <rect x="30" y="510" width="360" height="48" rx="12" fill="#0e0e18" stroke="#1a1a2a" stroke-width="1"/>
+
+  <!-- Active mode (SA-PA-SA) -->
+  <rect x="34" y="514" width="84" height="40" rx="10" fill="#d4a537" fill-opacity="0.15" stroke="#d4a537" stroke-width="1"/>
+  <text x="76" y="538" text-anchor="middle" font-size="11" font-weight="600" fill="#d4a537" font-family="Arial">SA-PA-SĀ</text>
+
+  <!-- SA FINE -->
+  <text x="166" y="538" text-anchor="middle" font-size="11" fill="#666" font-family="Arial">SA (FINE)</text>
+
+  <!-- SA & SA -->
+  <text x="256" y="538" text-anchor="middle" font-size="11" fill="#666" font-family="Arial">SA &amp; SĀ</text>
+
+  <!-- SA-MA-SA -->
+  <text x="346" y="538" text-anchor="middle" font-size="11" fill="#666" font-family="Arial">SA-MA-SĀ</text>
+
+  <!-- Mode indicator dots -->
+  <circle cx="76" cy="550" r="2.5" fill="#d4a537"/>
+  <circle cx="166" cy="550" r="2" fill="#333"/>
+  <circle cx="256" cy="550" r="2" fill="#333"/>
+  <circle cx="346" cy="550" r="2" fill="#333"/>
+
+  <!-- === VOLUME SECTION === -->
+  <text x="30" y="590" font-size="10" fill="#666" font-family="Arial" letter-spacing="2">VOLUME</text>
+
+  <rect x="30" y="600" width="360" height="50" rx="12" fill="#12121e" stroke="#1a1a2a" stroke-width="1"/>
+
+  <!-- Volume track background -->
+  <rect x="55" y="622" width="270" height="6" rx="3" fill="#222"/>
+  <!-- Volume track filled -->
+  <rect x="55" y="622" width="202" height="6" rx="3" fill="url(#goldGrad)"/>
+  <!-- Volume knob -->
+  <circle cx="257" cy="625" r="10" fill="#d4a537" stroke="#e8c547" stroke-width="2"/>
+
+  <!-- Volume label -->
+  <text x="345" y="629" text-anchor="middle" font-size="14" font-weight="600" fill="#d4a537" font-family="monospace">75%</text>
+
+  <!-- === PRESET BUTTONS === -->
+  <rect x="30" y="670" width="170" height="48" rx="12" fill="#1a1a2a" stroke="#333" stroke-width="1"/>
+  <text x="115" y="699" text-anchor="middle" font-size="13" font-weight="600" fill="#888" font-family="Arial">💾 STORE</text>
+
+  <rect x="220" y="670" width="170" height="48" rx="12" fill="#1a1a2a" stroke="#333" stroke-width="1"/>
+  <text x="305" y="699" text-anchor="middle" font-size="13" font-weight="600" fill="#888" font-family="Arial">📂 RECALL</text>
+
+  <!-- === FOOTER === -->
+  <line x1="30" y1="740" x2="390" y2="740" stroke="#1a1a2a" stroke-width="1"/>
+  <text x="210" y="765" text-anchor="middle" font-size="10" fill="#444" font-family="Arial" letter-spacing="2">ELECTRONIC TANPURA · KARNATAKA MUSIC</text>
+
+  <!-- Radel-inspired brand text -->
+  <text x="210" y="785" text-anchor="middle" font-size="9" fill="#333" font-family="Arial">Inspired by Radel Dhruva Nano Zx</text>
+
+  <!-- Design label -->
+  <rect x="130" y="800" width="160" height="16" rx="4" fill="#d4a537" fill-opacity="0.1"/>
+  <text x="210" y="811" text-anchor="middle" font-size="8" fill="#d4a537" font-family="Arial" letter-spacing="1">UI DESIGN MOCKUP</text>
+</svg>

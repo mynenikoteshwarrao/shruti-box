@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Shruti Box — Electronic Tanpura</title>
+<!-- PWA Meta Tags -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#d4a537">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shruti Box">
+<link rel="apple-touch-icon" href="icons/icon-192x192.png">
+<meta name="description" content="Electronic Shruti Box (Tanpura) for Carnatic music practice">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #07070c;
+  --bg-card: #0f0f1a;
+  --bg-card2: #0b0b14;
+  --bg-btn: #161628;
+  --gold: #d4a537;
+  --gold-l: #f0d060;
+  --gold-d: rgba(212,165,55,0.12);
+  --gold-g: rgba(212,165,55,0.25);
+  --cyan: #00c2d1;
+  --cyan-d: rgba(0,194,209,0.12);
+  --purple: #a855f7;
+  --green: #4ade80;
+  --red: #ef4444;
+  --orange: #f59e0b;
+  --txt: #eaeaea;
+  --txt2: #777;
+  --txt3: #444;
+  --brd: #1a1a30;
+  --brd2: #2a2a40;
+  --r: 14px;
+  --t: 0.25s ease;
+}
+
+body {
+  font-family: 'Poppins', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+  -webkit-tap-highlight-color: transparent;
+  overflow-y: auto;
+}
+
+.app {
+  width: 100%;
+  max-width: 440px;
+  background: linear-gradient(180deg, #0c0c16 0%, #070710 100%);
+  border-radius: 28px;
+  border: 1px solid var(--gold-d);
+  box-shadow: 0 0 100px rgba(212,165,55,0.04), 0 30px 80px rgba(0,0,0,0.6);
+  padding-bottom: 8px;
+}
+
+.app.off .pc { opacity: 0.2; pointer-events: none; filter: grayscale(1) brightness(0.6); }
+.app.off .viz-canvas { opacity: 0.08; }
+
+/* ── HEADER ── */
+.hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--brd);
+}
+.hdr-t { text-align: center; }
+.hdr-t h1 { font-size: 19px; font-weight: 600; letter-spacing: 0.4px; background: linear-gradient(135deg, #fff 0%, #d4a537 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hdr-t .sub { font-size: 8px; color: var(--txt2); letter-spacing: 3px; text-transform: uppercase; margin-top: 1px; }
+
+.cbtn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--bg-btn); border: 1.5px solid var(--brd2);
+  color: var(--txt2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--t); position: relative;
+}
+.cbtn:hover { border-color: var(--gold); }
+.cbtn:active { transform: scale(0.92); }
+.cbtn svg { width: 18px; height: 18px; }
+.cbtn.on { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 14px rgba(212,165,55,0.25); }
+
+.led {
+  position: absolute; top: -3px; right: -1px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--brd2); transition: all var(--t);
+}
+.cbtn.on .led { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+.mute-btn.muted { border-color: var(--red); color: var(--red); }
+
+/* ── VISUALIZATION ── */
+.viz {
+  margin: 12px 16px;
+  background: var(--bg-card2);
+  border-radius: 20px;
+  border: 1px solid var(--brd);
+  height: 280px;
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.viz-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.viz-overlay {
+  position: relative; z-index: 2;
+  text-align: center;
+  pointer-events: none;
+}
+.viz-mode { font-size: 11px; color: var(--gold); opacity: 0.7; letter-spacing: 2px; }
+.viz-swara { font-size: 38px; font-weight: 700; color: #fff; margin: 2px 0; text-shadow: 0 0 30px rgba(212,165,55,0.3); }
+.viz-note { font-size: 13px; color: var(--txt2); }
+.viz-freq { font-family: 'Courier New', monospace; font-size: 12px; color: var(--gold); opacity: 0.8; margin-top: 2px; }
+
+/* ── PITCH ── */
+.pitch {
+  margin: 0 16px 10px;
+  background: var(--bg-card);
+  border-radius: var(--r);
+  border: 1px solid var(--brd);
+  padding: 16px;
+}
+.pitch-main {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.pitch-center { text-align: center; flex: 1; }
+.pitch-note { font-size: 44px; font-weight: 700; line-height: 1; }
+.pitch-swara { font-size: 15px; color: var(--gold); margin-top: 2px; font-weight: 500; }
+.pitch-hz { font-family: 'Courier New', monospace; font-size: 13px; color: var(--txt2); margin-top: 2px; }
+
+.abtn {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--bg-btn); border: 1px solid var(--brd2);
+  color: var(--gold); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--t); flex-shrink: 0;
+}
+.abtn:hover { background: var(--gold-d); border-color: var(--gold); }
+.abtn:active { transform: scale(0.9); }
+.abtn svg { width: 18px; height: 18px; fill: none; stroke: var(--gold); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+.fine {
+  display: flex; align-items: center; justify-content: center;
+  gap: 14px; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--brd);
+}
+.fbtn {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--bg-btn); border: 1px solid var(--brd2);
+  color: var(--txt2); font-size: 15px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--t); font-family: system-ui;
+}
+.fbtn:hover { border-color: var(--gold); color: var(--gold); }
+.fbtn:active { transform: scale(0.88); }
+.fine-lbl { font-family: 'Courier New', monospace; font-size: 11px; color: var(--txt2); min-width: 100px; text-align: center; }
+
+/* ── SWARA STRIP ── */
+.sstrip {
+  margin: 0 16px 10px;
+  display: flex; gap: 3px;
+}
+.sstrip-note {
+  flex: 1; padding: 6px 2px;
+  background: var(--bg-card); border: 1px solid var(--brd);
+  border-radius: 8px; text-align: center; cursor: pointer;
+  transition: all var(--t);
+}
+.sstrip-note:hover { border-color: var(--brd2); }
+.sstrip-note.active { background: var(--gold-d); border-color: var(--gold); }
+.sstrip-note .sn { font-size: 9px; font-weight: 600; color: var(--txt2); line-height: 1.3; }
+.sstrip-note .sw { font-size: 7px; color: var(--txt3); }
+.sstrip-note.active .sn { color: var(--gold); }
+.sstrip-note.active .sw { color: var(--gold); opacity: 0.7; }
+
+/* ── MODE ── */
+.modes {
+  margin: 0 16px 10px;
+}
+.sec-lbl { font-size: 8px; color: var(--txt2); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+.mode-row {
+  background: var(--bg-card2);
+  border-radius: var(--r); border: 1px solid var(--brd);
+  display: flex; padding: 3px; gap: 2px;
+}
+.mbtn {
+  flex: 1; padding: 10px 2px;
+  border: 1px solid transparent; border-radius: 10px;
+  background: transparent; color: var(--txt2);
+  font-size: 10px; font-family: 'Poppins', sans-serif; font-weight: 500;
+  cursor: pointer; text-align: center; transition: all var(--t);
+}
+.mbtn:hover { color: var(--txt); }
+.mbtn.active { background: var(--gold-d); border-color: var(--gold); color: var(--gold); font-weight: 600; }
+.mbtn .mdot { display: block; width: 4px; height: 4px; border-radius: 50%; background: var(--brd2); margin: 5px auto 0; transition: all var(--t); }
+.mbtn.active .mdot { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+
+/* ── VOLUME ── */
+.vol {
+  margin: 0 16px 10px;
+  background: var(--bg-card); border-radius: var(--r); border: 1px solid var(--brd);
+  padding: 14px 16px;
+}
+.vol-row { display: flex; align-items: center; gap: 12px; }
+.vol-icon { color: var(--txt2); flex-shrink: 0; }
+.vol-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+.vslider {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 5px; border-radius: 3px; background: #1a1a30; outline: none; cursor: pointer;
+}
+.vslider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--gold); border: 2px solid var(--gold-l); cursor: pointer;
+  box-shadow: 0 0 10px rgba(212,165,55,0.35);
+}
+.vslider::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--gold); border: 2px solid var(--gold-l); cursor: pointer;
+}
+.vslider::-moz-range-track { height: 5px; border-radius: 3px; background: #1a1a30; }
+.vol-val { font-family: 'Courier New', monospace; font-size: 13px; font-weight: 600; color: var(--gold); min-width: 38px; text-align: right; }
+
+/* ── METRONOME ── */
+.met {
+  margin: 0 16px 10px;
+  background: var(--bg-card); border-radius: var(--r); border: 1px solid var(--brd);
+  padding: 14px 16px;
+}
+.met-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.met-title { font-size: 8px; color: var(--txt2); letter-spacing: 2px; text-transform: uppercase; }
+.met-toggle {
+  width: 42px; height: 22px; border-radius: 11px;
+  background: var(--brd); border: none; cursor: pointer;
+  position: relative; transition: all var(--t);
+}
+.met-toggle.on { background: var(--gold-d); border: 1px solid var(--gold); }
+.met-toggle .knob {
+  position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--txt2); transition: all var(--t);
+}
+.met-toggle.on .knob { left: 23px; background: var(--gold); }
+
+.met-controls { display: flex; align-items: center; gap: 8px; }
+.met-bpm { text-align: center; flex: 1; }
+.met-bpm-val { font-size: 28px; font-weight: 700; color: var(--txt); line-height: 1; }
+.met-bpm-lbl { font-size: 9px; color: var(--txt2); margin-top: 2px; }
+
+.tala-row { display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap; }
+.tala-btn {
+  padding: 5px 10px; border-radius: 8px;
+  background: var(--bg-btn); border: 1px solid var(--brd);
+  color: var(--txt2); font-size: 9px; font-family: 'Poppins', sans-serif;
+  cursor: pointer; transition: all var(--t);
+}
+.tala-btn:hover { border-color: var(--brd2); }
+.tala-btn.active { background: var(--cyan-d); border-color: var(--cyan); color: var(--cyan); }
+
+.met-beats { display: flex; gap: 5px; margin-top: 10px; justify-content: center; }
+.beat-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--brd); transition: all 0.1s;
+}
+.beat-dot.sam { background: var(--brd2); }
+.beat-dot.hit { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+.beat-dot.sam.hit { background: var(--red); box-shadow: 0 0 10px var(--red); }
+
+/* ── PRESETS ── */
+.presets {
+  margin: 0 16px 12px;
+  display: flex; gap: 8px;
+}
+.pbtn {
+  flex: 1; padding: 12px 8px;
+  border-radius: var(--r); background: var(--bg-btn);
+  border: 1px solid var(--brd2); color: var(--txt2);
+  font-size: 11px; font-weight: 600; font-family: 'Poppins', sans-serif;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  gap: 6px; transition: all var(--t);
+}
+.pbtn:hover { border-color: var(--gold); color: var(--txt); }
+.pbtn:active { transform: scale(0.97); }
+.pbtn.has { border-color: rgba(212,165,55,0.25); }
+
+/* ── FOOTER ── */
+.ftr {
+  text-align: center; padding: 10px 16px 16px;
+  border-top: 1px solid var(--brd);
+}
+.ftr p { font-size: 8px; color: var(--txt3); letter-spacing: 2px; text-transform: uppercase; }
+.ftr .f2 { font-size: 7px; color: var(--brd2); margin-top: 3px; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: #14142a; border: 1px solid var(--gold);
+  border-radius: 10px; padding: 8px 18px;
+  color: var(--gold); font-size: 12px; font-family: 'Poppins', sans-serif;
+  opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 100;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 460px) {
+  body { padding: 0; }
+  .app { border-radius: 0; border-left: none; border-right: none; min-height: 100vh; }
+}
+@media (min-width: 460px) {
+  body { align-items: flex-start; padding-top: 20px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app off" id="app">
+  <!-- HEADER -->
+  <div class="hdr">
+    <button class="cbtn" id="pwrBtn" aria-label="Power" title="Power (Space)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 3v6"/><path d="M18.36 6.64A9 9 0 1 1 5.64 6.64"/></svg>
+      <span class="led"></span>
+    </button>
+    <div class="hdr-t">
+      <h1>Shruti Box</h1>
+      <div class="sub">Electronic Tanpura</div>
+    </div>
+    <button class="cbtn mute-btn" id="muteBtn" aria-label="Mute" title="Mute (M)">
+      <svg id="muteIco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="pc">
+    <!-- VISUALIZATION -->
+    <div class="viz" id="viz">
+      <canvas class="viz-canvas" id="vizCanvas"></canvas>
+      <div class="viz-overlay">
+        <div class="viz-mode" id="vizMode">SA-PA-SĀ</div>
+        <div class="viz-swara" id="vizSwara">Sa</div>
+        <div class="viz-note" id="vizNote">C</div>
+        <div class="viz-freq" id="vizFreq">261.63 Hz</div>
+      </div>
+    </div>
+
+    <!-- SWARA STRIP -->
+    <div class="sstrip" id="sstrip"></div>
+
+    <!-- PITCH -->
+    <div class="pitch">
+      <div class="pitch-main">
+        <button class="abtn" id="pDown" aria-label="Pitch down" title="←">
+          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="pitch-center">
+          <div class="pitch-note" id="pNote">C</div>
+          <div class="pitch-swara" id="pSwara">Sa</div>
+          <div class="pitch-hz" id="pHz">261.63 Hz</div>
+        </div>
+        <button class="abtn" id="pUp" aria-label="Pitch up" title="→">
+          <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="fine">
+        <button class="fbtn" id="fDown">−</button>
+        <span class="fine-lbl" id="fLbl">Fine: +0 cents</span>
+        <button class="fbtn" id="fUp">+</button>
+      </div>
+    </div>
+
+    <!-- MODE -->
+    <div class="modes">
+      <div class="sec-lbl">Mode</div>
+      <div class="mode-row" id="modeRow">
+        <button class="mbtn active" data-mode="SA-PA-SA">SA-PA-SĀ<span class="mdot"></span></button>
+        <button class="mbtn" data-mode="SA-FINE">SA (FINE)<span class="mdot"></span></button>
+        <button class="mbtn" data-mode="SA-SA">SA &amp; SĀ<span class="mdot"></span></button>
+        <button class="mbtn" data-mode="SA-MA-SA">SA-MA-SĀ<span class="mdot"></span></button>
+      </div>
+    </div>
+
+    <!-- VOLUME -->
+    <div class="vol">
+      <div class="vol-row">
+        <span class="vol-icon">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="none"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </span>
+        <input type="range" class="vslider" id="volSlider" min="0" max="100" value="75" aria-label="Volume">
+        <span class="vol-val" id="volVal">75%</span>
+      </div>
+    </div>
+
+    <!-- METRONOME -->
+    <div class="met" id="metSection">
+      <div class="met-top">
+        <span class="met-title">Metronome / Tala</span>
+        <button class="met-toggle" id="metToggle"><span class="knob"></span></button>
+      </div>
+      <div class="met-controls">
+        <button class="abtn" id="bpmDown" style="width:36px;height:36px" aria-label="BPM down">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="met-bpm">
+          <div class="met-bpm-val" id="bpmVal">80</div>
+          <div class="met-bpm-lbl">BPM</div>
+        </div>
+        <button class="abtn" id="bpmUp" style="width:36px;height:36px" aria-label="BPM up">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="tala-row" id="talaRow">
+        <button class="tala-btn active" data-tala="adi8">Adi (8)</button>
+        <button class="tala-btn" data-tala="rupaka3">Rupaka (3)</button>
+        <button class="tala-btn" data-tala="misra7">Misra (7)</button>
+        <button class="tala-btn" data-tala="khanda5">Khanda (5)</button>
+      </div>
+      <div class="met-beats" id="metBeats"></div>
+    </div>
+
+    <!-- PRESETS -->
+    <div class="presets">
+      <button class="pbtn" id="storeBtn">💾 STORE</button>
+      <button class="pbtn" id="recallBtn">📂 RECALL</button>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="ftr">
+    <p>Electronic Tanpura · Karnataka Music</p>
+    <p class="f2">Inspired by Radel Dhruva Nano Zx</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════ DATA ══════════════════
+const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const SWARAS = ['Sa','Ri₁','Ri₂','Ga₁','Ga₂','Ma₁','Ma₂','Pa','Da₁','Da₂','Ni₁','Ni₂'];
+const FREQ = [261.63,277.18,293.66,311.13,329.63,349.23,369.99,392.00,415.30,440.00,466.16,493.88];
+
+const MODES = {
+  'SA-PA-SA':  { sa:1, pa:1, ma:0, su:1 },
+  'SA-FINE':   { sa:1, pa:0, ma:0, su:0 },
+  'SA-SA':     { sa:1, pa:0, ma:0, su:1 },
+  'SA-MA-SA':  { sa:1, pa:0, ma:1, su:1 },
+};
+const MODE_LABELS = { 'SA-PA-SA':'SA-PA-SĀ','SA-FINE':'SA (FINE)','SA-SA':'SA & SĀ','SA-MA-SA':'SA-MA-SĀ' };
+
+const TALAS = {
+  adi8:    { name:'Adi',    beats:8,  pattern:[1,0,0,0,1,0,1,0] },    // || | |
+  rupaka3: { name:'Rupaka', beats:3,  pattern:[1,0,1] },               // | |
+  misra7:  { name:'Misra',  beats:7,  pattern:[1,0,0,1,0,1,0] },       // || | |
+  khanda5: { name:'Khanda', beats:5,  pattern:[1,0,1,0,1] },           // || |
+};
+
+// ══════════════════ STATE ══════════════════
+const S = {
+  on: false, ni: 0, cents: 0, mode: 'SA-PA-SA',
+  vol: 75, muted: false,
+  metOn: false, bpm: 80, tala: 'adi8', beat: -1,
+};
+
+// ══════════════════ AUDIO ══════════════════
+let ctx, master, oscs = {}, gns = {};
+let metTimer = null, metCtx = null;
+
+function initCtx() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain();
+  master.gain.value = 0;
+  master.connect(ctx.destination);
+}
+
+function freq(ni, c) { return FREQ[ni] * Math.pow(2, c / 1200); }
+
+function mkOsc(id, f, g, type='sine') {
+  const o = ctx.createOscillator();
+  const gn = ctx.createGain();
+  o.type = type;
+  o.frequency.value = f;
+  gn.gain.value = 0;
+  o.connect(gn);
+  gn.connect(master);
+  o.start();
+  gn.gain.setValueAtTime(0, ctx.currentTime);
+  gn.gain.linearRampToValueAtTime(g, ctx.currentTime + 0.4);
+  oscs[id] = o;
+  gns[id] = gn;
+}
+
+function killOscs() {
+  const t = ctx ? ctx.currentTime : 0;
+  for (const k in gns) {
+    try { gns[k].gain.cancelScheduledValues(t); gns[k].gain.setValueAtTime(gns[k].gain.value, t); gns[k].gain.linearRampToValueAtTime(0, t + 0.12); } catch(e) {}
+  }
+  setTimeout(() => {
+    for (const k in oscs) { try { oscs[k].stop(); } catch(e) {} }
+    oscs = {}; gns = {};
+  }, 180);
+}
+
+function startDrone() {
+  if (!ctx) initCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+  killOscs();
+
+  setTimeout(() => {
+    const f = freq(S.ni, S.cents);
+    const m = MODES[S.mode];
+
+    // Sa fundamental + detuned (tanpura beating)
+    mkOsc('sa1', f, 0.25);
+    mkOsc('sa2', f * Math.pow(2, 4/1200), 0.16);
+    mkOsc('sa3', f * Math.pow(2, -3/1200), 0.08); // lower detuned for shimmer
+
+    // Harmonics
+    mkOsc('h2', f * 2, 0.05);
+    mkOsc('h3', f * 3, 0.02);
+    mkOsc('h5', f * 5, 0.008);
+
+    // Pa (perfect fifth)
+    if (m.pa) {
+      mkOsc('pa1', f * 1.5, 0.20);
+      mkOsc('pa2', f * 1.5 * Math.pow(2, 3/1200), 0.10);
+      mkOsc('pa3', f * 3, 0.04); // pa harmonic
+    }
+
+    // Ma (perfect fourth)
+    if (m.ma) {
+      mkOsc('ma1', f * 4/3, 0.20);
+      mkOsc('ma2', f * 4/3 * Math.pow(2, 3/1200), 0.10);
+    }
+
+    // Upper Sa
+    if (m.su) {
+      mkOsc('su1', f * 2, 0.14);
+      mkOsc('su2', f * 2 * Math.pow(2, 2/1200), 0.07);
+    }
+
+    // Amplitude modulation for tanpura-like pulsing
+    addTremolo();
+
+    // Master volume
+    const v = S.muted ? 0 : Math.pow(S.vol / 100, 2);
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+    master.gain.linearRampToValueAtTime(v, ctx.currentTime + 0.5);
+  }, 200);
+}
+
+// Subtle amplitude modulation to simulate tanpura string vibration
+function addTremolo() {
+  if (!ctx) return;
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.15; // very slow ~6.7s cycle
+  lfoGain.gain.value = 0.03; // subtle modulation
+  lfo.connect(lfoGain);
+  lfoGain.connect(master.gain);
+  lfo.start();
+  oscs['_lfo'] = lfo;
+  gns['_lfo'] = lfoGain;
+}
+
+function updateFreqs() {
+  if (!ctx || !S.on) return;
+  const f = freq(S.ni, S.cents);
+  const t = ctx.currentTime;
+  const map = {
+    sa1:f, sa2:f*Math.pow(2,4/1200), sa3:f*Math.pow(2,-3/1200),
+    h2:f*2, h3:f*3, h5:f*5,
+    pa1:f*1.5, pa2:f*1.5*Math.pow(2,3/1200), pa3:f*3,
+    ma1:f*4/3, ma2:f*4/3*Math.pow(2,3/1200),
+    su1:f*2, su2:f*2*Math.pow(2,2/1200),
+  };
+  for (const k in map) {
+    if (oscs[k]) {
+      oscs[k].frequency.cancelScheduledValues(t);
+      oscs[k].frequency.setValueAtTime(oscs[k].frequency.value, t);
+      oscs[k].frequency.exponentialRampToValueAtTime(map[k], t + 0.1);
+    }
+  }
+}
+
+function updateVol() {
+  if (!ctx || !master) return;
+  const v = S.muted ? 0 : Math.pow(S.vol / 100, 2);
+  const t = ctx.currentTime;
+  master.gain.cancelScheduledValues(t);
+  master.gain.setValueAtTime(master.gain.value, t);
+  master.gain.linearRampToValueAtTime(v, t + 0.08);
+}
+
+function stopDrone() {
+  if (!ctx || !master) return;
+  const t = ctx.currentTime;
+  master.gain.cancelScheduledValues(t);
+  master.gain.setValueAtTime(master.gain.value, t);
+  master.gain.linearRampToValueAtTime(0, t + 0.35);
+  setTimeout(() => killOscs(), 400);
+}
+
+// ══════════════════ METRONOME ══════════════════
+function initMetCtx() {
+  metCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function metTick(accent) {
+  if (!metCtx) initMetCtx();
+  if (metCtx.state === 'suspended') metCtx.resume();
+  const o = metCtx.createOscillator();
+  const g = metCtx.createGain();
+  o.type = 'sine';
+  o.frequency.value = accent ? 880 : 660;
+  g.gain.value = accent ? 0.25 : 0.15;
+  o.connect(g);
+  g.connect(metCtx.destination);
+  o.start(metCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, metCtx.currentTime + 0.08);
+  o.stop(metCtx.currentTime + 0.1);
+}
+
+function startMet() {
+  stopMet();
+  S.beat = -1;
+  const tala = TALAS[S.tala];
+  const interval = 60000 / S.bpm;
+  metTimer = setInterval(() => {
+    S.beat = (S.beat + 1) % tala.beats;
+    const accent = tala.pattern[S.beat] === 1;
+    metTick(accent);
+    renderBeats();
+  }, interval);
+}
+
+function stopMet() {
+  if (metTimer) { clearInterval(metTimer); metTimer = null; }
+  S.beat = -1;
+  renderBeats();
+}
+
+function renderBeats() {
+  const tala = TALAS[S.tala];
+  const el = document.getElementById('metBeats');
+  el.innerHTML = '';
+  for (let i = 0; i < tala.beats; i++) {
+    const d = document.createElement('div');
+    d.className = 'beat-dot';
+    if (tala.pattern[i] === 1) d.classList.add('sam');
+    if (i === S.beat) d.classList.add('hit');
+    el.appendChild(d);
+  }
+}
+
+// ══════════════════ CANVAS VISUALIZATION ══════════════════
+const canvas = document.getElementById('vizCanvas');
+const vizEl = document.getElementById('viz');
+let cw, ch, cctx, animId;
+
+function initCanvas() {
+  cctx = canvas.getContext('2d');
+  resize();
+  window.addEventListener('resize', resize);
+  animate();
+}
+
+function resize() {
+  const rect = vizEl.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  cw = rect.width;
+  ch = rect.height;
+  canvas.width = cw * dpr;
+  canvas.height = ch * dpr;
+  cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+let phase = 0;
+function animate() {
+  cctx.clearRect(0, 0, cw, ch);
+  const cx = cw / 2, cy = ch / 2;
+  const t = Date.now() / 1000;
+  const m = MODES[S.mode];
+
+  if (S.on) {
+    phase += 0.008;
+
+    // Background radial gradient
+    const bg = cctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(cw, ch) * 0.5);
+    bg.addColorStop(0, 'rgba(212,165,55,0.04)');
+    bg.addColorStop(1, 'transparent');
+    cctx.fillStyle = bg;
+    cctx.fillRect(0, 0, cw, ch);
+
+    // Outer ring (Sa) - gold
+    drawRing(cx, cy, 100, 'rgba(212,165,55,0.6)', 2.5, t * 0.3, 0.04);
+    drawRing(cx, cy, 100, 'rgba(212,165,55,0.12)', 8, t * 0.3, 0.04); // glow
+
+    // Middle ring (Pa/Ma)
+    if (m.pa || m.ma) {
+      const col = m.ma ? 'rgba(168,85,247,0.5)' : 'rgba(0,194,209,0.5)';
+      const colG = m.ma ? 'rgba(168,85,247,0.1)' : 'rgba(0,194,209,0.1)';
+      drawRing(cx, cy, 68, col, 2, t * 0.4 + 1, 0.05);
+      drawRing(cx, cy, 68, colG, 6, t * 0.4 + 1, 0.05);
+    }
+
+    // Inner ring (Upper Sa) - white
+    if (m.su) {
+      drawRing(cx, cy, 36, 'rgba(255,255,255,0.35)', 1.5, t * 0.5 + 2, 0.06);
+    }
+
+    // Rotating particles
+    drawParticles(cx, cy, t);
+
+    // Waveform circle
+    drawWave(cx, cy, 52, t);
+
+    // Center glow
+    const cg = cctx.createRadialGradient(cx, cy, 0, cx, cy, 8);
+    cg.addColorStop(0, 'rgba(212,165,55,0.8)');
+    cg.addColorStop(1, 'transparent');
+    cctx.fillStyle = cg;
+    cctx.beginPath();
+    cctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    cctx.fill();
+
+  } else {
+    // Dim static rings when off
+    cctx.globalAlpha = 0.08;
+    drawStaticRing(cx, cy, 100, '#d4a537', 1.5);
+    drawStaticRing(cx, cy, 68, '#00c2d1', 1);
+    drawStaticRing(cx, cy, 36, '#fff', 1);
+    cctx.globalAlpha = 1;
+  }
+
+  animId = requestAnimationFrame(animate);
+}
+
+function drawRing(cx, cy, r, color, w, offset, wobble) {
+  cctx.beginPath();
+  for (let a = 0; a < Math.PI * 2; a += 0.02) {
+    const dr = r + Math.sin(a * 6 + offset) * r * wobble + Math.sin(a * 3 - offset * 1.3) * r * wobble * 0.5;
+    const x = cx + Math.cos(a) * dr;
+    const y = cy + Math.sin(a) * dr;
+    a === 0 ? cctx.moveTo(x, y) : cctx.lineTo(x, y);
+  }
+  cctx.closePath();
+  cctx.strokeStyle = color;
+  cctx.lineWidth = w;
+  cctx.stroke();
+}
+
+function drawStaticRing(cx, cy, r, color, w) {
+  cctx.beginPath();
+  cctx.arc(cx, cy, r, 0, Math.PI * 2);
+  cctx.strokeStyle = color;
+  cctx.lineWidth = w;
+  cctx.stroke();
+}
+
+function drawParticles(cx, cy, t) {
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + t * 0.2;
+    const r = 100 + Math.sin(t * 0.5 + i) * 8;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    const alpha = 0.3 + Math.sin(t * 2 + i * 0.7) * 0.2;
+    cctx.beginPath();
+    cctx.arc(x, y, 2, 0, Math.PI * 2);
+    cctx.fillStyle = `rgba(212,165,55,${alpha})`;
+    cctx.fill();
+  }
+}
+
+function drawWave(cx, cy, r, t) {
+  cctx.beginPath();
+  for (let a = 0; a < Math.PI * 2; a += 0.03) {
+    const wave = Math.sin(a * 12 + t * 3) * 3 + Math.sin(a * 7 - t * 2) * 2;
+    const dr = r + wave;
+    const x = cx + Math.cos(a) * dr;
+    const y = cy + Math.sin(a) * dr;
+    a === 0 ? cctx.moveTo(x, y) : cctx.lineTo(x, y);
+  }
+  cctx.closePath();
+  cctx.strokeStyle = 'rgba(212,165,55,0.2)';
+  cctx.lineWidth = 1;
+  cctx.stroke();
+}
+
+// ══════════════════ SWARA STRIP ══════════════════
+function buildSstrip() {
+  const el = document.getElementById('sstrip');
+  el.innerHTML = '';
+  NOTES.forEach((n, i) => {
+    const d = document.createElement('div');
+    d.className = 'sstrip-note' + (i === S.ni ? ' active' : '');
+    d.innerHTML = `<div class="sn">${n}</div><div class="sw">${SWARAS[i]}</div>`;
+    d.addEventListener('click', () => {
+      if (!S.on) return;
+      S.ni = i;
+      S.cents = 0;
+      startDrone();
+      updateUI();
+    });
+    el.appendChild(d);
+  });
+}
+
+// ══════════════════ UI ══════════════════
+const $ = id => document.getElementById(id);
+
+function updateUI() {
+  const n = NOTES[S.ni], sw = SWARAS[S.ni], f = freq(S.ni, S.cents);
+
+  // Pitch
+  $('pNote').textContent = n;
+  $('pSwara').textContent = sw;
+  $('pHz').textContent = f.toFixed(2) + ' Hz';
+
+  // Fine
+  const sign = S.cents >= 0 ? '+' : '';
+  $('fLbl').textContent = `Fine: ${sign}${S.cents} cents`;
+
+  // Volume
+  $('volSlider').value = S.vol;
+  $('volVal').textContent = S.vol + '%';
+  $('volSlider').style.background = `linear-gradient(to right, #d4a537 0%, #d4a537 ${S.vol}%, #1a1a30 ${S.vol}%, #1a1a30 100%)`;
+
+  // Mode buttons
+  document.querySelectorAll('.mbtn').forEach(b => b.classList.toggle('active', b.dataset.mode === S.mode));
+
+  // Visualization overlay
+  $('vizMode').textContent = MODE_LABELS[S.mode];
+  $('vizSwara').textContent = sw;
+  $('vizNote').textContent = n;
+  $('vizFreq').textContent = f.toFixed(2) + ' Hz';
+
+  // Mute
+  const mi = $('muteIco');
+  if (S.muted) {
+    mi.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+    $('muteBtn').classList.add('muted');
+  } else {
+    mi.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>';
+    $('muteBtn').classList.remove('muted');
+  }
+
+  // Power
+  $('app').classList.toggle('off', !S.on);
+  $('pwrBtn').classList.toggle('on', S.on);
+
+  // Swara strip
+  document.querySelectorAll('.sstrip-note').forEach((el, i) => el.classList.toggle('active', i === S.ni));
+
+  // Metronome
+  $('metToggle').classList.toggle('on', S.metOn);
+  $('bpmVal').textContent = S.bpm;
+
+  // Tala buttons
+  document.querySelectorAll('.tala-btn').forEach(b => b.classList.toggle('active', b.dataset.tala === S.tala));
+
+  // Preset
+  $('recallBtn').classList.toggle('has', !!localStorage.getItem('shrutiPreset'));
+}
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+// ══════════════════ EVENTS ══════════════════
+$('pwrBtn').addEventListener('click', () => {
+  S.on = !S.on;
+  if (S.on) { startDrone(); toast('Power ON'); }
+  else { stopDrone(); stopMet(); S.metOn = false; toast('Power OFF'); }
+  updateUI();
+});
+
+$('muteBtn').addEventListener('click', () => {
+  if (!S.on) return;
+  S.muted = !S.muted;
+  updateVol();
+  toast(S.muted ? 'Muted' : 'Unmuted');
+  updateUI();
+});
+
+$('pUp').addEventListener('click', () => {
+  if (!S.on) return;
+  S.ni = (S.ni + 1) % 12; S.cents = 0;
+  startDrone(); updateUI();
+});
+
+$('pDown').addEventListener('click', () => {
+  if (!S.on) return;
+  S.ni = (S.ni - 1 + 12) % 12; S.cents = 0;
+  startDrone(); updateUI();
+});
+
+$('fUp').addEventListener('click', () => {
+  if (!S.on || S.cents >= 50) return;
+  S.cents++; updateFreqs(); updateUI();
+});
+
+$('fDown').addEventListener('click', () => {
+  if (!S.on || S.cents <= -50) return;
+  S.cents--; updateFreqs(); updateUI();
+});
+
+document.querySelectorAll('.mbtn').forEach(b => {
+  b.addEventListener('click', () => {
+    if (!S.on) return;
+    S.mode = b.dataset.mode;
+    startDrone(); updateUI();
+  });
+});
+
+$('volSlider').addEventListener('input', e => {
+  S.vol = parseInt(e.target.value);
+  S.muted = false;
+  updateVol(); updateUI();
+});
+
+// Metronome
+$('metToggle').addEventListener('click', () => {
+  if (!S.on) return;
+  S.metOn = !S.metOn;
+  if (S.metOn) startMet(); else stopMet();
+  updateUI();
+});
+
+$('bpmUp').addEventListener('click', () => {
+  if (S.bpm < 240) { S.bpm += 5; if (S.metOn) startMet(); updateUI(); }
+});
+
+$('bpmDown').addEventListener('click', () => {
+  if (S.bpm > 30) { S.bpm -= 5; if (S.metOn) startMet(); updateUI(); }
+});
+
+document.querySelectorAll('.tala-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    S.tala = b.dataset.tala;
+    if (S.metOn) startMet();
+    renderBeats(); updateUI();
+  });
+});
+
+// Presets
+$('storeBtn').addEventListener('click', () => {
+  const p = { ni:S.ni, cents:S.cents, mode:S.mode, vol:S.vol, bpm:S.bpm, tala:S.tala };
+  localStorage.setItem('shrutiPreset', JSON.stringify(p));
+  toast('Preset stored'); updateUI();
+});
+
+$('recallBtn').addEventListener('click', () => {
+  const d = localStorage.getItem('shrutiPreset');
+  if (!d) { toast('No preset saved'); return; }
+  const p = JSON.parse(d);
+  S.ni = p.ni; S.cents = p.cents || 0; S.mode = p.mode; S.vol = p.vol;
+  S.bpm = p.bpm || 80; S.tala = p.tala || 'adi8';
+  if (S.on) startDrone();
+  if (S.metOn) startMet();
+  renderBeats();
+  toast('Preset recalled'); updateUI();
+});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  switch(e.code) {
+    case 'Space': e.preventDefault(); $('pwrBtn').click(); break;
+    case 'ArrowRight': e.preventDefault(); $('pUp').click(); break;
+    case 'ArrowLeft': e.preventDefault(); $('pDown').click(); break;
+    case 'ArrowUp': e.preventDefault(); $('fUp').click(); break;
+    case 'ArrowDown': e.preventDefault(); $('fDown').click(); break;
+    case 'KeyM': $('muteBtn').click(); break;
+    case 'KeyT': $('metToggle').click(); break;
+    case 'Digit1': case 'Numpad1': if(S.on){S.mode='SA-PA-SA';startDrone();updateUI();} break;
+    case 'Digit2': case 'Numpad2': if(S.on){S.mode='SA-FINE';startDrone();updateUI();} break;
+    case 'Digit3': case 'Numpad3': if(S.on){S.mode='SA-SA';startDrone();updateUI();} break;
+    case 'Digit4': case 'Numpad4': if(S.on){S.mode='SA-MA-SA';startDrone();updateUI();} break;
+  }
+});
+
+// Long press for fine tune
+let fi = null;
+['fUp','fDown'].forEach(id => {
+  const b = $(id); let to;
+  b.addEventListener('mousedown', () => { to = setTimeout(() => { fi = setInterval(() => b.click(), 70); }, 350); });
+  b.addEventListener('mouseup', () => { clearTimeout(to); clearInterval(fi); });
+  b.addEventListener('mouseleave', () => { clearTimeout(to); clearInterval(fi); });
+  b.addEventListener('touchstart', e => { e.preventDefault(); b.click(); to = setTimeout(() => { fi = setInterval(() => b.click(), 70); }, 350); });
+  b.addEventListener('touchend', () => { clearTimeout(to); clearInterval(fi); });
+});
+
+// Long press for BPM
+['bpmUp','bpmDown'].forEach(id => {
+  const b = $(id); let to, iv;
+  b.addEventListener('mousedown', () => { to = setTimeout(() => { iv = setInterval(() => b.click(), 120); }, 400); });
+  b.addEventListener('mouseup', () => { clearTimeout(to); clearInterval(iv); });
+  b.addEventListener('mouseleave', () => { clearTimeout(to); clearInterval(iv); });
+  b.addEventListener('touchstart', e => { e.preventDefault(); b.click(); to = setTimeout(() => { iv = setInterval(() => b.click(), 120); }, 400); });
+  b.addEventListener('touchend', () => { clearTimeout(to); clearInterval(iv); });
+});
+
+// ══════════════════ PWA SERVICE WORKER ══════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+
+// PWA install prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show install button
+  const installBtn = document.createElement('button');
+  installBtn.className = 'pbtn';
+  installBtn.innerHTML = '📲 INSTALL APP';
+  installBtn.style.marginTop = '8px';
+  installBtn.style.width = '100%';
+  installBtn.onclick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') { toast('App installed!'); installBtn.remove(); }
+      deferredPrompt = null;
+    }
+  };
+  const presets = document.querySelector('.presets');
+  if (presets) presets.after(installBtn);
+});
+
+// ══════════════════ INIT ══════════════════
+buildSstrip();
+renderBeats();
+initCanvas();
+updateUI();
+</script>
+</body>
+</html>

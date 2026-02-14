@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d0d18"/>
+      <stop offset="100%" stop-color="#07070e"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0d060"/>
+      <stop offset="100%" stop-color="#c49520"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <rect x="2" y="2" width="508" height="508" rx="106" fill="none" stroke="#d4a537" stroke-opacity="0.2" stroke-width="2"/>
+
+  <!-- Outer ring (Sa) -->
+  <circle cx="256" cy="240" r="140" fill="none" stroke="#d4a537" stroke-width="4" stroke-opacity="0.7" filter="url(#glow)"/>
+  <circle cx="256" cy="240" r="140" fill="none" stroke="#d4a537" stroke-width="1" stroke-opacity="0.2" stroke-dasharray="6 8"/>
+
+  <!-- Middle ring (Pa) -->
+  <circle cx="256" cy="240" r="95" fill="none" stroke="#00c2d1" stroke-width="3" stroke-opacity="0.5" filter="url(#glow)"/>
+
+  <!-- Inner ring (upper Sa) -->
+  <circle cx="256" cy="240" r="50" fill="none" stroke="#fff" stroke-width="2" stroke-opacity="0.35"/>
+
+  <!-- Center dot -->
+  <circle cx="256" cy="240" r="8" fill="url(#gold)" opacity="0.9"/>
+
+  <!-- Particles on outer ring -->
+  <circle cx="396" cy="240" r="5" fill="#d4a537" opacity="0.7"/>
+  <circle cx="256" cy="100" r="5" fill="#d4a537" opacity="0.5"/>
+  <circle cx="116" cy="240" r="5" fill="#d4a537" opacity="0.4"/>
+  <circle cx="256" cy="380" r="5" fill="#d4a537" opacity="0.6"/>
+
+  <!-- Text -->
+  <text x="256" y="430" text-anchor="middle" font-family="system-ui, sans-serif" font-size="42" font-weight="700" fill="#e8e8e8">Shruti Box</text>
+  <text x="256" y="468" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" fill="#d4a537" letter-spacing="4" opacity="0.7">TANPURA</text>
+</svg>
