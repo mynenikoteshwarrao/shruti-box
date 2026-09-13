@@ -1,0 +1,14 @@
+{
+  "id": "session-1789278066840",
+  "startedAt": "2026-09-13T05:41:06.840Z",
+  "cwd": "/Users/koteshwar/personal/shruti-box",
+  "context": {},
+  "metrics": {
+    "edits": 27,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-09-13T07:23:13.466Z",
+  "duration": 6126630
+}
