@@ -97,6 +97,10 @@ body {
 .cbtn.on .led { background: var(--green); box-shadow: 0 0 8px var(--green); }
 
 .mute-btn.muted { border-color: var(--red); color: var(--red); }
+.instrument { display: flex; align-items: center; gap: 12px; margin: 12px 16px 0; }
+.instrument label { font-size: 10px; color: var(--txt2); letter-spacing: 1px; }
+.instrument select { flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--brd2); border-radius: 10px; background: var(--bg-btn); color: var(--txt); font: inherit; font-size: 12px; cursor: pointer; }
+.instrument select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* ── VISUALIZATION ── */
 .viz {
@@ -341,6 +345,16 @@ body {
     </button>
   </div>
 
+  <div class="instrument">
+    <label for="instrumentSelect">Instrument</label>
+    <select id="instrumentSelect">
+      <option value="tanpura">Tanpura</option>
+      <option value="shruti-box">Shruti Box</option>
+      <option value="harmonium">Harmonium</option>
+      <option value="soft-sine">Soft Sine</option>
+    </select>
+  </div>
+
   <div class="pc">
     <!-- VISUALIZATION -->
     <div class="viz" id="viz">
@@ -456,6 +470,13 @@ const MODES = {
   'SA-MA-SA':  { sa:1, pa:0, ma:1, su:1 },
 };
 const MODE_LABELS = { 'SA-PA-SA':'SA-PA-SĀ','SA-FINE':'SA (FINE)','SA-SA':'SA & SĀ','SA-MA-SA':'SA-MA-SĀ' };
+const INSTRUMENTS = {
+  tanpura: null, // The plucked/resonant profile has its own voice blend below.
+  'shruti-box': [1, 0.12, 0.38, 0.08, 0.18, 0.04, 0.07],
+  harmonium: [1, 0.5, 0.28, 0.16, 0.08, 0.04],
+  'soft-sine': [1],
+};
+const NOTE_SLOT = 1.0, NOTE_FADE = 0.5, NOTE_FLOOR = 0.2;
 
 const TALAS = {
   adi8:    { name:'Adi',    beats:8,  pattern:[1,0,0,0,1,0,1,0] },    // || | |
@@ -466,137 +487,180 @@ const TALAS = {
 
 // ══════════════════ STATE ══════════════════
 const S = {
-  on: false, ni: 0, cents: 0, mode: 'SA-PA-SA',
+  on: false, ni: 0, cents: 0, mode: 'SA-PA-SA', instrument: 'tanpura',
   vol: 75, muted: false,
   metOn: false, bpm: 80, tala: 'adi8', beat: -1,
 };
 
 // ══════════════════ AUDIO ══════════════════
-let ctx, master, oscs = {}, gns = {};
-let metTimer = null, metCtx = null;
+let ctx, master, drone = null, oscs = {}, gns = {};
+let droneRequest = 0, metRequest = 0, metTimer = null;
+const metVoices = new Set();
 
 function initCtx() {
+  if (master) master.disconnect();
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   master = ctx.createGain();
   master.gain.value = 0;
   master.connect(ctx.destination);
 }
 
+async function readyAudio() {
+  if (!ctx || ctx.state === 'closed') initCtx();
+  if (ctx.state !== 'running') await ctx.resume();
+  if (ctx.state !== 'running') throw new Error('Audio context is not running');
+}
+
 function freq(ni, c) { return FREQ[ni] * Math.pow(2, c / 1200); }
 
-function mkOsc(id, f, g, type='sine') {
+function initDrone(groups, resonant) {
+  const input = ctx.createGain(), output = ctx.createGain();
+  drone = { context:ctx, input, output, groups, resonant, nodes:[input, output], sources:[], notes:{}, ratios:{}, base:freq(S.ni, S.cents), start:ctx.currentTime + 0.02 };
+  output.gain.value = 0;
+  input.connect(output);
+  output.connect(master);
+
+  // Two quiet, dark echoes add body without a feedback loop or a long muddy tail.
+  if (resonant) {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass'; filter.frequency.value = 1800; filter.Q.value = 0.5;
+    input.connect(filter); drone.nodes.push(filter);
+    for (const [time, level] of [[0.14, 0.20], [0.28, 0.09]]) {
+      const delay = ctx.createDelay(0.5), wet = ctx.createGain();
+      delay.delayTime.value = time; wet.gain.value = level;
+      filter.connect(delay); delay.connect(wet); wet.connect(output);
+      drone.nodes.push(delay, wet);
+    }
+  }
+
+  if (groups.length === 1) drone.notes.sa = input;
+  else {
+    // Complementary handoffs keep every note sounding without holes in the blend.
+    const cycle = groups.length * NOTE_SLOT, rate = 8000;
+    const buffer = ctx.createBuffer(1, Math.round(cycle * rate), rate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      const t = (i / rate + NOTE_FADE / 2) % cycle;
+      let lead = 0;
+      if (t < NOTE_FADE) lead = 0.5 - 0.5 * Math.cos(Math.PI * t / NOTE_FADE);
+      else if (t < NOTE_SLOT) lead = 1;
+      else if (t < NOTE_SLOT + NOTE_FADE) lead = 0.5 + 0.5 * Math.cos(Math.PI * (t - NOTE_SLOT) / NOTE_FADE);
+      data[i] = NOTE_FLOOR + (1 - NOTE_FLOOR) * lead;
+    }
+    groups.forEach((name, i) => {
+      const note = ctx.createGain(), envelope = ctx.createBufferSource();
+      note.gain.value = 0;
+      envelope.buffer = buffer; envelope.loop = true;
+      envelope.connect(note.gain); note.connect(input);
+      drone.notes[name] = note;
+      drone.nodes.push(note, envelope); drone.sources.push(envelope);
+      envelope.start(drone.start, (cycle - i * NOTE_SLOT) % cycle);
+    });
+  }
+  output.gain.setValueAtTime(0, drone.start);
+  output.gain.linearRampToValueAtTime(1, drone.start + 0.2);
+}
+
+function mkOsc(id, f, g, note) {
   const o = ctx.createOscillator();
   const gn = ctx.createGain();
-  o.type = type;
+  o.type = 'sine';
   o.frequency.value = f;
-  gn.gain.value = 0;
+  gn.gain.value = g;
   o.connect(gn);
-  gn.connect(master);
-  o.start();
-  gn.gain.setValueAtTime(0, ctx.currentTime);
-  gn.gain.linearRampToValueAtTime(g, ctx.currentTime + 0.4);
+  gn.connect(drone.notes[note]);
+  drone.nodes.push(o, gn); drone.sources.push(o);
+  drone.ratios[id] = f / drone.base;
+  o.start(drone.start);
   oscs[id] = o;
   gns[id] = gn;
 }
 
 function killOscs() {
-  const t = ctx ? ctx.currentTime : 0;
-  for (const k in gns) {
-    try { gns[k].gain.cancelScheduledValues(t); gns[k].gain.setValueAtTime(gns[k].gain.value, t); gns[k].gain.linearRampToValueAtTime(0, t + 0.12); } catch(e) {}
+  const old = drone;
+  oscs = {}; gns = {}; drone = null;
+  if (!old) return;
+  const cleanup = () => old.nodes.forEach(node => node.disconnect());
+  if (old.context.state !== 'running' || old.sources.length === 0) {
+    for (const source of old.sources) { try { source.stop(); } catch (error) {} }
+    cleanup(); return;
   }
-  setTimeout(() => {
-    for (const k in oscs) { try { oscs[k].stop(); } catch(e) {} }
-    oscs = {}; gns = {};
-  }, 180);
+  const t = old.context.currentTime, gain = old.output.gain;
+  gain.cancelScheduledValues(t);
+  gain.setValueAtTime(gain.value, t);
+  gain.linearRampToValueAtTime(0, t + 0.12);
+  let remaining = old.sources.length;
+  for (const source of old.sources) {
+    source.onended = () => { if (--remaining === 0) cleanup(); };
+    try { source.stop(t + 0.13); } catch (error) { source.onended(); }
+  }
 }
 
-function startDrone() {
-  if (!ctx) initCtx();
-  if (ctx.state === 'suspended') ctx.resume();
-  killOscs();
-
-  setTimeout(() => {
+async function startDrone() {
+  const request = ++droneRequest;
+  try {
+    await readyAudio();
+    if (request !== droneRequest || !S.on) return false;
+    killOscs();
     const f = freq(S.ni, S.cents);
     const m = MODES[S.mode];
+    const groups = ['sa', ...(m.pa ? ['pa'] : m.ma ? ['ma'] : []), ...(m.su ? ['su'] : [])];
+    initDrone(groups, S.instrument === 'tanpura');
 
-    // Sa fundamental + detuned (tanpura beating)
-    mkOsc('sa1', f, 0.25);
-    mkOsc('sa2', f * Math.pow(2, 4/1200), 0.16);
-    mkOsc('sa3', f * Math.pow(2, -3/1200), 0.08); // lower detuned for shimmer
-
-    // Harmonics
-    mkOsc('h2', f * 2, 0.05);
-    mkOsc('h3', f * 3, 0.02);
-    mkOsc('h5', f * 5, 0.008);
-
-    // Pa (perfect fifth)
-    if (m.pa) {
-      mkOsc('pa1', f * 1.5, 0.20);
-      mkOsc('pa2', f * 1.5 * Math.pow(2, 3/1200), 0.10);
-      mkOsc('pa3', f * 3, 0.04); // pa harmonic
+    if (S.instrument === 'tanpura') {
+      // A focused fundamental and restrained overtones; only one quiet shimmer layer.
+      mkOsc('sa1', f, 0.42, 'sa');
+      if (m.su) mkOsc('sa2', f * Math.pow(2, 1.5/1200), 0.022, 'sa');
+      mkOsc('h2', f * 2, 0.035, 'sa');
+      mkOsc('h3', f * 3, 0.012, 'sa');
+      mkOsc('h5', f * 5, 0.004, 'sa');
+      if (m.pa) {
+        mkOsc('pa1', f * 1.5, 0.36, 'pa');
+        mkOsc('pa3', f * 3, 0.015, 'pa');
+      }
+      if (m.ma) {
+        mkOsc('ma1', f * 4/3, 0.36, 'ma');
+        mkOsc('ma2', f * 8/3, 0.015, 'ma');
+      }
+      if (m.su) {
+        mkOsc('su1', f * 2, 0.30, 'su');
+        mkOsc('su2', f * 4, 0.012, 'su');
+      }
+    } else {
+      const partials = INSTRUMENTS[S.instrument], total = partials.reduce((sum, value) => sum + value, 0);
+      const ratios = { sa:1, pa:1.5, ma:4/3, su:2 }, levels = { sa:0.42, pa:0.30, ma:0.30, su:0.24 };
+      const gain = S.instrument === 'soft-sine' ? 0.72 : 1; // Leave room for accented metronome clicks.
+      // Normalize each reed blend so simultaneous notes retain output headroom.
+      groups.forEach(note => partials.forEach((level, i) => {
+        mkOsc(note + (i + 1), f * ratios[note] * (i + 1), gain * levels[note] * level / total, note);
+      }));
     }
 
-    // Ma (perfect fourth)
-    if (m.ma) {
-      mkOsc('ma1', f * 4/3, 0.20);
-      mkOsc('ma2', f * 4/3 * Math.pow(2, 3/1200), 0.10);
-    }
-
-    // Upper Sa
-    if (m.su) {
-      mkOsc('su1', f * 2, 0.14);
-      mkOsc('su2', f * 2 * Math.pow(2, 2/1200), 0.07);
-    }
-
-    // Amplitude modulation for tanpura-like pulsing
-    addTremolo();
-
-    // Master volume
-    const v = S.muted ? 0 : Math.pow(S.vol / 100, 2);
-    master.gain.cancelScheduledValues(ctx.currentTime);
-    master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
-    master.gain.linearRampToValueAtTime(v, ctx.currentTime + 0.5);
-  }, 200);
-}
-
-// Subtle amplitude modulation to simulate tanpura string vibration
-function addTremolo() {
-  if (!ctx) return;
-  const lfo = ctx.createOscillator();
-  const lfoGain = ctx.createGain();
-  lfo.type = 'sine';
-  lfo.frequency.value = 0.15; // very slow ~6.7s cycle
-  lfoGain.gain.value = 0.03; // subtle modulation
-  lfo.connect(lfoGain);
-  lfoGain.connect(master.gain);
-  lfo.start();
-  oscs['_lfo'] = lfo;
-  gns['_lfo'] = lfoGain;
+    updateVol();
+    return true;
+  } catch (error) {
+    if (request !== droneRequest) return false;
+    S.on = false; S.metOn = false;
+    stopDrone(); stopMet(); updateUI();
+    toast('Unable to start audio. Tap Power to retry.');
+    return false;
+  }
 }
 
 function updateFreqs() {
   if (!ctx || !S.on) return;
   const f = freq(S.ni, S.cents);
   const t = ctx.currentTime;
-  const map = {
-    sa1:f, sa2:f*Math.pow(2,4/1200), sa3:f*Math.pow(2,-3/1200),
-    h2:f*2, h3:f*3, h5:f*5,
-    pa1:f*1.5, pa2:f*1.5*Math.pow(2,3/1200), pa3:f*3,
-    ma1:f*4/3, ma2:f*4/3*Math.pow(2,3/1200),
-    su1:f*2, su2:f*2*Math.pow(2,2/1200),
-  };
-  for (const k in map) {
-    if (oscs[k]) {
-      oscs[k].frequency.cancelScheduledValues(t);
-      oscs[k].frequency.setValueAtTime(oscs[k].frequency.value, t);
-      oscs[k].frequency.exponentialRampToValueAtTime(map[k], t + 0.1);
-    }
+  for (const k in oscs) {
+    oscs[k].frequency.cancelScheduledValues(t);
+    oscs[k].frequency.setValueAtTime(oscs[k].frequency.value, t);
+    oscs[k].frequency.exponentialRampToValueAtTime(f * drone.ratios[k], t + 0.1);
   }
 }
 
 function updateVol() {
   if (!ctx || !master) return;
-  const v = S.muted ? 0 : Math.pow(S.vol / 100, 2);
+  const v = !S.on || S.muted ? 0 : Math.pow(S.vol / 100, 2);
   const t = ctx.currentTime;
   master.gain.cancelScheduledValues(t);
   master.gain.setValueAtTime(master.gain.value, t);
@@ -604,37 +668,44 @@ function updateVol() {
 }
 
 function stopDrone() {
+  ++droneRequest;
   if (!ctx || !master) return;
   const t = ctx.currentTime;
   master.gain.cancelScheduledValues(t);
   master.gain.setValueAtTime(master.gain.value, t);
-  master.gain.linearRampToValueAtTime(0, t + 0.35);
-  setTimeout(() => killOscs(), 400);
+  master.gain.linearRampToValueAtTime(0, t + 0.12);
+  killOscs();
 }
 
 // ══════════════════ METRONOME ══════════════════
-function initMetCtx() {
-  metCtx = new (window.AudioContext || window.webkitAudioContext)();
-}
-
 function metTick(accent) {
-  if (!metCtx) initMetCtx();
-  if (metCtx.state === 'suspended') metCtx.resume();
-  const o = metCtx.createOscillator();
-  const g = metCtx.createGain();
+  if (!S.on || !S.metOn || ctx?.state !== 'running') return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
   o.type = 'sine';
   o.frequency.value = accent ? 880 : 660;
   g.gain.value = accent ? 0.25 : 0.15;
   o.connect(g);
-  g.connect(metCtx.destination);
-  o.start(metCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, metCtx.currentTime + 0.08);
-  o.stop(metCtx.currentTime + 0.1);
+  g.connect(master);
+  metVoices.add(o);
+  o.onended = () => { o.disconnect(); g.disconnect(); metVoices.delete(o); };
+  o.start(ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+  o.stop(ctx.currentTime + 0.1);
 }
 
-function startMet() {
+async function startMet() {
   stopMet();
-  S.beat = -1;
+  const request = metRequest;
+  try {
+    await readyAudio();
+  } catch (error) {
+    if (request === metRequest) {
+      S.metOn = false; updateUI(); toast('Unable to start metronome audio.');
+    }
+    return;
+  }
+  if (request !== metRequest || !S.on || !S.metOn) return;
   const tala = TALAS[S.tala];
   const interval = 60000 / S.bpm;
   metTimer = setInterval(() => {
@@ -646,7 +717,9 @@ function startMet() {
 }
 
 function stopMet() {
+  ++metRequest;
   if (metTimer) { clearInterval(metTimer); metTimer = null; }
+  for (const voice of metVoices) voice.stop();
   S.beat = -1;
   renderBeats();
 }
@@ -686,8 +759,25 @@ function resize() {
   cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
+function updateVoiceCue() {
+  let note = null;
+  const sounding = S.on && !S.muted && S.vol > 0 && ctx?.state === 'running' && drone;
+  if (sounding) {
+    const elapsed = ctx.currentTime - drone.start;
+    if (elapsed >= 0) note = drone.groups[Math.floor(elapsed / NOTE_SLOT) % drone.groups.length];
+  }
+  const status = !S.on ? 'Power off' : S.muted || S.vol === 0 ? 'Muted' : !drone ? 'Starting' : ctx.state !== 'running' ? 'Paused' : 'Starting';
+  const labels = { sa:'Sa', pa:'Pa', ma:'Ma', su:'Sā' }, offsets = { sa:0, pa:7, ma:5, su:12 };
+  const ratios = { sa:1, pa:1.5, ma:4/3, su:2 }, f = freq(S.ni, S.cents);
+  $('vizMode').textContent = MODE_LABELS[S.mode] + (drone?.groups.length > 1 ? ' · BLEND' : '');
+  $('vizSwara').textContent = note ? labels[note] : status;
+  $('vizNote').textContent = note ? NOTES[(S.ni + offsets[note]) % 12] : 'Tonic ' + NOTES[S.ni];
+  $('vizFreq').textContent = note ? (f * ratios[note]).toFixed(2) + ' Hz' : f.toFixed(2) + ' Hz tonic';
+}
+
 let phase = 0;
 function animate() {
+  updateVoiceCue();
   cctx.clearRect(0, 0, cw, ch);
   const cx = cw / 2, cy = ch / 2;
   const t = Date.now() / 1000;
@@ -822,6 +912,7 @@ const $ = id => document.getElementById(id);
 
 function updateUI() {
   const n = NOTES[S.ni], sw = SWARAS[S.ni], f = freq(S.ni, S.cents);
+  $('instrumentSelect').value = S.instrument;
 
   // Pitch
   $('pNote').textContent = n;
@@ -841,10 +932,7 @@ function updateUI() {
   document.querySelectorAll('.mbtn').forEach(b => b.classList.toggle('active', b.dataset.mode === S.mode));
 
   // Visualization overlay
-  $('vizMode').textContent = MODE_LABELS[S.mode];
-  $('vizSwara').textContent = sw;
-  $('vizNote').textContent = n;
-  $('vizFreq').textContent = f.toFixed(2) + ' Hz';
+  updateVoiceCue();
 
   // Mute
   const mi = $('muteIco');
@@ -871,7 +959,8 @@ function updateUI() {
   document.querySelectorAll('.tala-btn').forEach(b => b.classList.toggle('active', b.dataset.tala === S.tala));
 
   // Preset
-  $('recallBtn').classList.toggle('has', !!localStorage.getItem('shrutiPreset'));
+  try { $('recallBtn').classList.toggle('has', !!localStorage.getItem('shrutiPreset')); }
+  catch (error) { $('recallBtn').classList.remove('has'); }
 }
 
 function toast(msg) {
@@ -882,6 +971,13 @@ function toast(msg) {
 }
 
 // ══════════════════ EVENTS ══════════════════
+$('instrumentSelect').addEventListener('change', e => {
+  if (!Object.hasOwn(INSTRUMENTS, e.target.value)) return;
+  S.instrument = e.target.value;
+  if (S.on) startDrone();
+  updateUI();
+});
+
 $('pwrBtn').addEventListener('click', () => {
   S.on = !S.on;
   if (S.on) { startDrone(); toast('Power ON'); }
@@ -942,15 +1038,18 @@ $('metToggle').addEventListener('click', () => {
 });
 
 $('bpmUp').addEventListener('click', () => {
-  if (S.bpm < 240) { S.bpm += 5; if (S.metOn) startMet(); updateUI(); }
+  if (!S.on) return;
+  if (S.bpm < 240) { S.bpm = Math.min(240, S.bpm + 5); if (S.metOn) startMet(); updateUI(); }
 });
 
 $('bpmDown').addEventListener('click', () => {
-  if (S.bpm > 30) { S.bpm -= 5; if (S.metOn) startMet(); updateUI(); }
+  if (!S.on) return;
+  if (S.bpm > 30) { S.bpm = Math.max(30, S.bpm - 5); if (S.metOn) startMet(); updateUI(); }
 });
 
 document.querySelectorAll('.tala-btn').forEach(b => {
   b.addEventListener('click', () => {
+    if (!S.on) return;
     S.tala = b.dataset.tala;
     if (S.metOn) startMet();
     renderBeats(); updateUI();
@@ -959,17 +1058,31 @@ document.querySelectorAll('.tala-btn').forEach(b => {
 
 // Presets
 $('storeBtn').addEventListener('click', () => {
-  const p = { ni:S.ni, cents:S.cents, mode:S.mode, vol:S.vol, bpm:S.bpm, tala:S.tala };
-  localStorage.setItem('shrutiPreset', JSON.stringify(p));
-  toast('Preset stored'); updateUI();
+  const p = { ni:S.ni, cents:S.cents, mode:S.mode, vol:S.vol, bpm:S.bpm, tala:S.tala, instrument:S.instrument };
+  try {
+    localStorage.setItem('shrutiPreset', JSON.stringify(p));
+    toast('Preset stored'); updateUI();
+  } catch (error) { toast('Unable to store preset on this device.'); }
 });
 
 $('recallBtn').addEventListener('click', () => {
-  const d = localStorage.getItem('shrutiPreset');
+  let d, p;
+  try { d = localStorage.getItem('shrutiPreset'); }
+  catch (error) { toast('Unable to read preset on this device.'); return; }
   if (!d) { toast('No preset saved'); return; }
-  const p = JSON.parse(d);
-  S.ni = p.ni; S.cents = p.cents || 0; S.mode = p.mode; S.vol = p.vol;
-  S.bpm = p.bpm || 80; S.tala = p.tala || 'adi8';
+  try {
+    p = JSON.parse(d);
+    const inRange = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
+    if (!p || typeof p !== 'object' || Array.isArray(p)) throw new Error('Invalid preset');
+    p = { ni:p.ni, cents:p.cents ?? 0, mode:p.mode, vol:p.vol, bpm:p.bpm ?? 80, tala:p.tala ?? 'adi8', instrument:p.instrument === undefined ? 'tanpura' : p.instrument };
+    if (!inRange(p.ni, 0, 11) || !inRange(p.cents, -50, 50) || !inRange(p.vol, 0, 100) ||
+        !inRange(p.bpm, 30, 240) || typeof p.mode !== 'string' || !Object.hasOwn(MODES, p.mode) ||
+        typeof p.tala !== 'string' || !Object.hasOwn(TALAS, p.tala) ||
+        typeof p.instrument !== 'string' || !Object.hasOwn(INSTRUMENTS, p.instrument)) {
+      throw new Error('Invalid preset');
+    }
+  } catch (error) { toast('Saved preset is invalid. Store a new preset.'); return; }
+  Object.assign(S, p);
   if (S.on) startDrone();
   if (S.metOn) startMet();
   renderBeats();
@@ -978,7 +1091,7 @@ $('recallBtn').addEventListener('click', () => {
 
 // Keyboard
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
   switch(e.code) {
     case 'Space': e.preventDefault(); $('pwrBtn').click(); break;
     case 'ArrowRight': e.preventDefault(); $('pUp').click(); break;
@@ -994,26 +1107,25 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Long press for fine tune
-let fi = null;
-['fUp','fDown'].forEach(id => {
-  const b = $(id); let to;
-  b.addEventListener('mousedown', () => { to = setTimeout(() => { fi = setInterval(() => b.click(), 70); }, 350); });
-  b.addEventListener('mouseup', () => { clearTimeout(to); clearInterval(fi); });
-  b.addEventListener('mouseleave', () => { clearTimeout(to); clearInterval(fi); });
-  b.addEventListener('touchstart', e => { e.preventDefault(); b.click(); to = setTimeout(() => { fi = setInterval(() => b.click(), 70); }, 350); });
-  b.addEventListener('touchend', () => { clearTimeout(to); clearInterval(fi); });
-});
-
-// Long press for BPM
-['bpmUp','bpmDown'].forEach(id => {
+// Long press for fine tune and BPM. Interrupted touches must stop repeating too.
+function repeatButton(id, delay, interval) {
   const b = $(id); let to, iv;
-  b.addEventListener('mousedown', () => { to = setTimeout(() => { iv = setInterval(() => b.click(), 120); }, 400); });
-  b.addEventListener('mouseup', () => { clearTimeout(to); clearInterval(iv); });
-  b.addEventListener('mouseleave', () => { clearTimeout(to); clearInterval(iv); });
-  b.addEventListener('touchstart', e => { e.preventDefault(); b.click(); to = setTimeout(() => { iv = setInterval(() => b.click(), 120); }, 400); });
-  b.addEventListener('touchend', () => { clearTimeout(to); clearInterval(iv); });
-});
+  const cancel = () => { clearTimeout(to); clearInterval(iv); };
+  const start = () => {
+    cancel();
+    to = setTimeout(() => { iv = setInterval(() => b.click(), interval); }, delay);
+  };
+  b.addEventListener('mousedown', start);
+  b.addEventListener('mouseup', cancel);
+  b.addEventListener('mouseleave', cancel);
+  b.addEventListener('touchstart', e => { e.preventDefault(); b.click(); start(); });
+  b.addEventListener('touchend', cancel);
+  b.addEventListener('touchcancel', cancel);
+  window.addEventListener('blur', cancel);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); });
+}
+['fUp','fDown'].forEach(id => repeatButton(id, 350, 70));
+['bpmUp','bpmDown'].forEach(id => repeatButton(id, 400, 120));
 
 // ══════════════════ PWA SERVICE WORKER ══════════════════
 if ('serviceWorker' in navigator) {
